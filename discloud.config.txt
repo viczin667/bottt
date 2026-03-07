@@ -1,0 +1,10 @@
+NAME=OSOGRIGINAL
+AVATAR=https://i.imgur.com/bWhx7OT.png
+TYPE=bot
+MAIN=index.js
+RAM=256
+AUTORESTART=false
+VERSION=latest
+APT=tools
+START=
+BUILD=
