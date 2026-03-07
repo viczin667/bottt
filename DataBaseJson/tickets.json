@@ -1,0 +1,36 @@
+{
+    "tickets": {
+        "aparencia": {
+            "color": "#000000",
+            "banner": "https://cdn.discordapp.com/attachments/1301384736022728774/1309737016094887986/My4fEV7.png?ex=6742ab26&is=674159a6&hm=5144f988e0e2dd55b781c21a157e16d1511debcdfe93c4270f3123f50c9437f4&",
+            "title": "Tickets RyN",
+            "description": "<:1225930194427183225:1301924805171478660> **Seja Bem-Vindo ao Sistema de Tickets da RyN**\n\n- **Escolha sua Opção de Ticket, Após Selecionar Será Criado um Canal Privado Para Apenas Você e os Adms Conversarem, Após Abrir o Ticket Envie o Motivo e espere o Atendimento**\n\n- **Não Desrespeite nenhum Adm Durante o Ticket, e Seja Compreensível Com eles**"
+        },
+        "funcoes": {
+            "C0mpr4r": {
+                "nome": "C0mpr4r",
+                "predescricao": "Quero C0mpr4r Algo!",
+                "descricao": "Você abriu um ticket na categoria **C0mpr4s**",
+                "emoji": "<:1242266498484015124:1301924802621341798>"
+            },
+            "Suporte": {
+                "nome": "Suporte",
+                "predescricao": "Preciso de Suporte",
+                "descricao": "Você abriu um ticket na categoria **Suporte**",
+                "emoji": "<:1252078584592597083:1301924807226425364>"
+            }
+        },
+        "messageid": [
+            {
+                "msgid": "1309738704830595223",
+                "channelid": "1301384761536675922",
+                "guildid": "1301225392740237343"
+            },
+            {
+                "msgid": "1310101203731873813",
+                "channelid": "1301384736022728774",
+                "guildid": "1301225392740237343"
+            }
+        ]
+    }
+}

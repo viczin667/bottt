@@ -1,0 +1,34 @@
+{
+    "Lenkis Letros": {
+        "Config": {
+            "name": "Lenkis Letros",
+            "desc": "N1\n\n\n- 6 \n- Não p1tr∅\n- Melhor prrcado\n- Garantseu\n\nN1tr∅ Linkl\n\n- Links C\n- ost\n- Não pode ter tido 1itr0\n- Melhor preço do mercado\n- Garanta ja o seu\n\n・ N1tr0 L1nke m3nsal e trimestr0l\n・Para ativar, é necessário um cartão.\n・A c0nta também precisa ter pelo menos 30 dias de criação e não pode ter recebido N1tr0 nos últimos 12 meses.",
+            "entrega": "Sim",
+            "banner": "https://media.discordapp.net/attachments/1447375417706156032/1458449286667829289/BANNER_PRODUTOS_2.png?ex=696645be&is=6964f43e&hm=5de25dce00189fb8820e7ed17315c72a827e70069b9f47077256837e338faed7&format=webp&quality=lossless&width=1521&height=856&"
+        },
+        "Campos": [
+            {
+                "estoque": [],
+                "valor": 0.99,
+                "Nome": "lenkis 1m",
+                "desc": "",
+                "criado": 1768260956651
+            },
+            {
+                "estoque": [],
+                "valor": 2.39,
+                "Nome": "lenkis 3m",
+                "desc": "",
+                "criado": 1768261005762
+            }
+        ],
+        "Cupom": [],
+        "mensagens": [
+            {
+                "guildid": "1432131737269309452",
+                "channelid": "1460416081180233833",
+                "mesageid": "1460417331590070476"
+            }
+        ]
+    }
+}

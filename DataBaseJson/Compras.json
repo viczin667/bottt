@@ -1,0 +1,76 @@
+{
+    "Compras": [
+        {
+            "id": 140159859869,
+            "method": "pix",
+            "user": "1207081208236736584",
+            "valor": 0.01,
+            "banco": "Banco Inter S.A.",
+            "data": 1767659346106
+        },
+        {
+            "id": 140817074426,
+            "method": "pix",
+            "user": "1207081208236736584",
+            "valor": 0.01,
+            "banco": "Banco Inter S.A.",
+            "data": 1767661010701
+        },
+        {
+            "id": 140349003689,
+            "method": "pix",
+            "user": "1207081208236736584",
+            "valor": 0.01,
+            "banco": "Banco Inter S.A.",
+            "data": 1767787864497
+        },
+        {
+            "id": 141016267414,
+            "method": "pix",
+            "user": "748203804562030692",
+            "valor": 0.01,
+            "banco": "Banco Inter S.A.",
+            "data": 1767795102953
+        },
+        {
+            "id": 140363639449,
+            "method": "pix",
+            "user": "1390514383381205014",
+            "valor": 0.01,
+            "banco": "Banco Inter S.A.",
+            "data": 1767795163098
+        },
+        {
+            "id": 141558857932,
+            "method": "pix",
+            "user": "861800069535367189",
+            "valor": 0.99,
+            "banco": "NU PAGAMENTOS S.A. - INSTITUIÇÃO DE PAGAMENTO",
+            "data": 1768105409566
+        },
+        {
+            "id": 142184039130,
+            "method": "pix",
+            "user": "861800069535367189",
+            "valor": 2.75,
+            "banco": "NU PAGAMENTOS S.A. - INSTITUIÇÃO DE PAGAMENTO",
+            "data": 1768512952048
+        },
+        {
+            "id": 142761228598,
+            "method": "pix",
+            "user": "1412181511054164090",
+            "valor": 0.99,
+            "banco": "STONE INSTITUIÇÃO DE PAGAMENTO S.A.",
+            "data": 1768900454147
+        },
+        {
+            "id": 145498824411,
+            "method": "pix",
+            "user": "1419462643256791162",
+            "valor": 0.99,
+            "banco": null,
+            "data": 1771026202155
+        }
+    ]
+}

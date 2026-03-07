@@ -1,0 +1,205 @@
+{
+    "Emojis_EntregAbaixo": [
+        {
+            "id": "1457901862949752985",
+            "name": "eb6"
+        },
+        {
+            "id": "1457901866188017675",
+            "name": "eb9"
+        },
+        {
+            "id": "1457901867584720931",
+            "name": "eb8"
+        },
+        {
+            "id": "1457901872424812675",
+            "name": "eb4"
+        },
+        {
+            "id": "1457901873880109187",
+            "name": "eb7"
+        },
+        {
+            "id": "1457901875545247744",
+            "name": "eb5"
+        },
+        {
+            "id": "1457901878493974621",
+            "name": "eb2"
+        },
+        {
+            "id": "1457901887687753951",
+            "name": "eb1"
+        },
+        {
+            "id": "1457901889189576870",
+            "name": "eb3"
+        }
+    ],
+    "Emojis_EntregAuto": [
+        {
+            "id": "1457901864707297290",
+            "name": "ea8"
+        },
+        {
+            "id": "1457901869614764032",
+            "name": "ea6"
+        },
+        {
+            "id": "1457901870998622300",
+            "name": "ea1"
+        },
+        {
+            "id": "1457901877164507256",
+            "name": "ea4"
+        },
+        {
+            "id": "1457901880821809173",
+            "name": "ea3"
+        },
+        {
+            "id": "1457901882390610113",
+            "name": "ea7"
+        },
+        {
+            "id": "1457901884210680021",
+            "name": "ea2"
+        },
+        {
+            "id": "1457901885897052262",
+            "name": "ea5"
+        }
+    ],
+    "Emojis_Diversos": [
+        {
+            "id": "1259607498315268117",
+            "name": "ed3"
+        },
+        {
+            "id": "1259607504808050810",
+            "name": "ed2"
+        },
+        {
+            "id": "1259607510441001153",
+            "name": "ed4"
+        },
+        {
+            "id": "1259607513201115230",
+            "name": "ed5"
+        },
+        {
+            "id": "1259607513800904786",
+            "name": "ed1"
+        }
+    ],
+    "pagamentos": {
+        "BancosBloqueados": [],
+        "MpOnOff": true,
+        "MpSite": false,
+        "moeda": "BRL",
+        "QRCode": "imagem",
+        "ContasBloqueadas": [],
+        "EfiOnOff": false,
+        "MpAPI": "",
+        "SemiAutomatico": {
+            "status": true,
+            "pix": "Revolut Store",
+            "msg": "VEM PV"
+        }
+    },
+    "AntiFake": {
+        "diasminimos": 10,
+        "status": [],
+        "nomes": [],
+        "MinDias": "",
+        "StatusBloquear": "",
+        "NomeBloquear": ""
+    },
+    "Entradas": {},
+    "posicoes": {},
+    "Cores": {
+        "Principal": "#FF0000",
+        "Processamento": "#9400D3",
+        "Sucesso": "#00FF00",
+        "Erro": "#FF0000",
+        "Finalizado": "#FF0000"
+    },
+    "ConfigCarrinho": {
+        "inatividade": 5,
+        "pospagamento": 10
+    },
+    "ConfigChannels": {
+        "logpedidos": "",
+        "eventbuy": "",
+        "boasvindascoole": "",
+        "systemlogs": "",
+        "feedback": ""
+    },
+    "QRCode": {
+        "principal": "#FF0000",
+        "lateral": "#000203",
+        "gradient": "radial"
+    },
+    "AutomaticSettings": {
+        "GerenciarCanais": {
+            "status": false,
+            "abertura": "08:00",
+            "fechamento": "00:00",
+            "canais": [
+                ""
+            ],
+            "tipo": "aberto",
+            "mensagem": [
+                ""
+            ]
+        },
+        "LimpezaAutomatica": {
+            "status": true,
+            "primeira": "00:30",
+            "segunda": "07:00",
+            "canais": [
+                ""
+            ],
+            "execucaoprimeira": true,
+            "execucaosegunda": false
+        },
+        "SistemaNukar": {
+            "canais": [],
+            "status": true,
+            "horario": "21:38",
+            "data": "05/01/2026 - 21:38"
+        },
+        "SistemadeFiltro": {
+            "status": true,
+            "punicao": "mute",
+            "tempo": 60000,
+            "convites": false,
+            "links": [],
+            "palavras": [
+                "nitrada",
+                "conta"
+            ]
+        }
+    },
+    "ConfigRoles": {
+        "cargoadm": "",
+        "cargosup": "",
+        "cargoCliente": "",
+        "cargomembro": ""
+    },
+    "Status1": "Entregas Automáticas",
+    "Status2": "Compre com segurança e agilidade.",
+    "BotaoDuvidas": {
+        "ultimaTroca": 1767787179740,
+        "status": true,
+        "emoji": "🎫",
+        "nomebotao": "Duvidas?",
+        "linkbotao": "https://discord.com/channels/1432131737269309452/1447375459569504328"
+    },
+    "Instrucoes": {
+        "linkbotao": "https://discord.com/channels/1432131737269309452/1447375460655955989",
+        "nomebotao": "Feedbacks",
+        "mensagem": "**Lembre-se de deixar um feedback de como foi sua compra!\nGarantia de produtos apenas com feedbacks\n(não vale pra meth0dos)\n@here**"
+    }
+}
