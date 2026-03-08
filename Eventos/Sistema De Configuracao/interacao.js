@@ -90,6 +90,25 @@ module.exports = {
         }
 
         if (interaction.type == Discord.InteractionType.ModalSubmit) {
+            // --- Adicione dentro do bloco de ModalSubmit ---
+if (interaction.customId.startsWith('modal_estoque_')) {
+    const produtoNome = interaction.customId.replace('modal_estoque_', '');
+    const conteudo = interaction.fields.getTextInputValue('estoque_input').split('\n').filter(linha => linha.trim() !== "");
+
+    if (conteudo.length === 0) return interaction.reply({ content: `${Emojis.get('negative_emoji')} Nenhum item inserido.`, ephemeral: true });
+
+    // Puxa o estoque atual ou cria um array vazio se não existir
+    const estoqueAtual = produtos.get(`${produtoNome}.estoque`) || [];
+    produtos.set(`${produtoNome}.estoque`, [...estoqueAtual, ...conteudo]);
+
+    await interaction.reply({ 
+        content: `${Emojis.get('confirmed_emoji')} Sucesso! \`${conteudo.length}\` itens adicionados ao estoque de **${produtoNome}**.`, 
+        ephemeral: true 
+    });
+    
+    // Atualiza a mensagem global do produto
+    await UpdateMessageProduto(client, produtoNome);
+}
             if (interaction.customId === 'ConfigurarPagamentoManual2') {
                 let a2 = interaction.fields.getTextInputValue('tokenMP2');
                 let a3 = interaction.fields.getTextInputValue('tokenMP3');
