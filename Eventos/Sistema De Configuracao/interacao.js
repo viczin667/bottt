@@ -718,6 +718,42 @@ if (interaction.customId.startsWith('modal_estoque_')) {
         }
 
             if (interaction.isButton()) {
+                // --- DENTRO DE isButton ---
+
+// Botão para abrir o Modal de Adicionar Estoque
+if (interaction.customId.startsWith('add_stock_')) {
+    const id = interaction.customId.replace('add_stock_', '');
+    const modal = new ModalBuilder()
+        .setCustomId(`modal_stock_${id}`)
+        .setTitle(`Estoque: ${id}`);
+
+    const input = new TextInputBuilder()
+        .setCustomId('stock_data')
+        .setLabel("CONTEÚDO DO ESTOQUE (UM POR LINHA)")
+        .setStyle(TextInputStyle.Paragraph)
+        .setPlaceholder("user:pass\nuser2:pass2")
+        .setRequired(true);
+
+    modal.addComponents(new ActionRowBuilder().addComponents(input));
+    return await interaction.showModal(modal);
+}
+
+// Botão para alterar Preço rapidamente
+if (interaction.customId.startsWith('edit_price_')) {
+    const id = interaction.customId.replace('edit_price_', '');
+    const modal = new ModalBuilder()
+        .setCustomId(`modal_price_${id}`)
+        .setTitle(`Alterar Preço: ${id}`);
+
+    const input = new TextInputBuilder()
+        .setCustomId('new_price')
+        .setLabel("NOVO PREÇO (USE PONTO EX: 15.50)")
+        .setStyle(TextInputStyle.Short)
+        .setRequired(true);
+
+    modal.addComponents(new ActionRowBuilder().addComponents(input));
+    return await interaction.showModal(modal);
+}
 
             if (interaction.customId == 'resetPerms') {
 
