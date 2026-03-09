@@ -142,3 +142,13 @@ const job = schedule.scheduleJob({ hour: 5, minute: 55, tz: 'America/Sao_Paulo' 
   resetCarrinhos();
 });
 schedule.scheduleJob({ hour: 5, minute: 55, tz: 'America/Sao_Paulo' }, resetCarrinhos);
+// No final do seu index.js
+const token = process.env.TOKEN || process.env.DISCORD_TOKEN;
+
+if (!token) {
+    console.error("ERRO: Token não encontrado! Verifique as variáveis no Render.");
+} else {
+    client.login(token).catch(err => {
+        console.error("Erro ao fazer login no Discord:", err);
+    });
+}
