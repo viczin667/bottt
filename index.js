@@ -69,7 +69,7 @@ process.on('uncaughtExceptionMonitor', (error, origin) => {
 });
 
 // --- LOGIN DO BOT (SEGURANÇA ATUALIZADA) ---
-client.login(process.env.DISCORD_TOKEN).catch((err) => {
+client.login(process.env.TOKEN).catch((err) => {
   if (err?.message?.includes("intent")) return console.log(`${colors.red(`[LOG]`)} Intents inválidas!`);
   if (err?.message?.includes("invalid")) return console.log(`${colors.red(`[LOG]`)} Token inválido!`);
 });
