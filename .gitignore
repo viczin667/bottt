@@ -1,0 +1,27 @@
+# Configurações de Ambiente (O MAIS IMPORTANTE)
+.env
+.env.test
+.env.local
+
+# Dependências (Nunca suba isso, a Render instala sozinha)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Banco de Dados Local (Arquivos JSON que mudam toda hora)
+# Se você subir o carrinhos.json, ele vai resetar toda vez que você atualizar o código
+DataBaseJson/carrinhos.json
+DataBaseJson/configuracao.json
+
+# Logs e Cache
+logs/
+*.log
+.eslintcache
+
+# Pastas de Sistema/IDEs
+.vscode/
+.idea/
+.DS_Store
+dist/
+build/
