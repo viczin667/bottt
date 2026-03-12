@@ -1,152 +1,149 @@
 require('dotenv').config();
-const { GatewayIntentBits, Client, Collection, ChannelType } = require("discord.js");
+const { GatewayIntentBits, Client, Collection, Partials } = require("discord.js");
 const express = require('express');
-const app = express();
-const { AtivarIntents } = require("./Functions/StartIntents");
-const { configuracao, carrinhos } = require("./DataBaseJson");
-const { handleDeletedMessage, handleUpdatedMessage } = require('./Functions/MsgsLogs');
-const { handleVoiceStateUpdate } = require('./Functions/VoiceLogs');
-const { handleProfileUpdate } = require('./Functions/ProfileLog');
-const { agendarRepostagem } = require('./Functions/repostagem');
 const schedule = require('node-schedule');
 const fs = require('fs');
 const path = require('path');
 const colors = require("colors");
 
-// --- MANTER ONLINE NA RENDER (KEEP-ALIVE) ---
+// --- INICIALIZAÇÃO DO EXPRESS (PRIORIDADE RENDER) ---
+const app = express();
 app.get('/', (req, res) => res.send('Xenza Bot Online'));
 const port = process.env.PORT || 3000;
-app.listen(port, '0.0.0.0', () => console.log(colors.cyan(`[SISTEMA] Porta ${port} aberta.`)));
-
-// --- INICIALIZAÇÃO DO CLIENTE ---
-const client = new Client({
-  intents: [
-    GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent,
-    GatewayIntentBits.GuildMembers,
-    GatewayIntentBits.GuildVoiceStates,
-    GatewayIntentBits.DirectMessages,
-    GatewayIntentBits.GuildInvites,
-    GatewayIntentBits.GuildMessageReactions,
-  ],
+app.listen(port, '0.0.0.0', () => {
+    console.log(colors.cyan(`[SISTEMA] Porta ${port} aberta. Keep-alive pronto.`));
 });
 
-client.setMaxListeners(50); 
+// --- CLIENTE COM PARTIALS (EVITA ERROS EM MSGS ANTIGAS) ---
+const client = new Client({
+    intents: [
+        GatewayIntentBits.Guilds,
+        GatewayIntentBits.GuildMessages,
+        GatewayIntentBits.MessageContent,
+        GatewayIntentBits.GuildMembers,
+        GatewayIntentBits.GuildVoiceStates,
+        GatewayIntentBits.DirectMessages,
+        GatewayIntentBits.GuildInvites,
+        GatewayIntentBits.GuildMessageReactions,
+    ],
+    partials: [Partials.Message, Partials.Channel, Partials.Reaction, Partials.User, Partials.GuildMember]
+});
 
+client.setMaxListeners(100); // Aumentado levemente para suportar múltiplos handlers
+
+// --- EXPORTAÇÃO DE INSTÂNCIAS ---
 const estatisticasKingInstance = require("./Functions/VariaveisEstatisticas");
 const EstatisticasKing = new estatisticasKingInstance();
-module.exports = { EstatisticasKing };
+module.exports = { client, EstatisticasKing }; // Exportando client para outras funções se necessário
+
+// --- IMPORTAÇÃO DE FUNÇÕES E HANDLERS ---
+const { AtivarIntents } = require("./Functions/StartIntents");
+const { configuracao } = require("./DataBaseJson");
+const { handleDeletedMessage, handleUpdatedMessage } = require('./Functions/MsgsLogs');
+const { handleVoiceStateUpdate } = require('./Functions/VoiceLogs');
+const { handleProfileUpdate } = require('./Functions/ProfileLog');
+const { agendarRepostagem } = require('./Functions/repostagem');
 const { sendMessage } = require('./Functions/MsgAutomatics');
+const { TodosInvites } = require("./Eventos/Bot/Entrada");
 
-AtivarIntents();
-
-const config = require("./config.json");
 const events = require('./Handler/events');
 const slash = require('./Handler/slash');
 
-// --- EVENTO READY ---
-client.on('ready', () => {
-  console.log(colors.green(`✅ Bot ${client.user.tag} conectado e pronto!`));
-  
-  // Inicialização das funções automáticas
-  try {
-    sendMessage(client);
-    agendarRepostagem(client);
-  } catch (err) {
-    console.error(colors.red("[ERRO] Falha ao iniciar loops automáticos:"), err.message);
-  }
-});
+// Inicialização de intents extras
+AtivarIntents();
 
-slash.run(client);
-events.run(client);
 client.slashCommands = new Collection();
 
-// --- TRATAMENTO DE ERROS (ANTI-CRASH) ---
-// Corrigido para ignorar o erro de JSON/HTML que estava derrubando a Xenza
-process.on('unhandledRejection', (reason, promise) => {
-  if (reason?.message?.includes("Unexpected token '<'")) {
-    console.log(colors.yellow(`⚠️ [Xenza Alerta] Uma requisição retornou HTML em vez de JSON. Ignorando para evitar queda.`));
-  } else {
-    console.log(colors.red(`🚫 Erro Detectado (unhandledRejection):\n`), reason);
-  }
-});
-
-process.on('uncaughtException', (error, origin) => {
-  console.log(colors.red(`🚫 Erro Detectado (uncaughtException):\n`), error);
-});
-
-// --- GERENCIAMENTO DE GUILDAS ---
-client.on('guildCreate', async (guild) => {
-  if (client.guilds.cache?.size > 1) { 
-    try {
-      await guild.leave();
-      console.log(`Saiu da guilda: ${guild.name}`);
-    } catch (error) {
-      console.error('Erro ao sair da guilda:', error);
-    }
-  }
-});
-
-// --- CONFIGURAÇÃO DE LOGS ---
-const messageLogChannelId = configuracao.get(`ConfigChannels.mensagens`);
-const trafficLogChannelId = configuracao.get(`ConfigChannels.tráfego`);
-const profileLogChannelId = configuracao.get(`ConfigChannels.perfil`);
-
-if (!messageLogChannelId) console.warn(colors.yellow('Aviso: Canal de mensagens não configurado.'));
-if (!trafficLogChannelId) console.warn(colors.yellow('Aviso: Canal de tráfego não configurado.'));
-if (!profileLogChannelId) console.warn(colors.yellow('Aviso: Canal de perfil não configurado.'));
-
-// --- EVENTOS DE MENSAGENS E VOZ ---
-client.on('messageDelete', (message) => {
-  if (messageLogChannelId) handleDeletedMessage(message, messageLogChannelId, client);
-});
-
-client.on('messageUpdate', (oldMessage, newMessage) => {
-  if (messageLogChannelId) handleUpdatedMessage(oldMessage, newMessage, messageLogChannelId, client);
-});
-
-client.on('voiceStateUpdate', (oldState, newState) => {
-  if (trafficLogChannelId) handleVoiceStateUpdate(oldState, newState, trafficLogChannelId, client);
-});
-
-client.on('guildMemberUpdate', (oldMember, newMember) => {
-  if (profileLogChannelId) handleProfileUpdate(oldMember, newMember, profileLogChannelId, client);
-});
-
-// --- GERENCIAMENTO DE CONVITES ---
-const { TodosInvites } = require("./Eventos/Bot/Entrada");
-client.on('inviteCreate', async () => await TodosInvites(client));
-client.on('inviteDelete', async () => await TodosInvites(client));
-
-// --- RESET DE CARRINHOS (05:55 AM) ---
-const filePath = path.join(__dirname, './DataBaseJson', 'carrinhos.json');
-function resetCarrinhos() {
-  const data = {};
-  fs.writeFile(filePath, JSON.stringify(data), 'utf8', (err) => {
-    if (err) {
-      console.error('Erro ao resetar carrinhos.json:', err);
-    } else {
-      console.log(colors.yellow('[SISTEMA] Carrinhos zerados com sucesso (Agendamento)!'));
-    }
-  });
+// --- INICIALIZAÇÃO DE HANDLERS ---
+try {
+    slash.run(client);
+    events.run(client);
+} catch (err) {
+    console.error(colors.red("[ERRO] Falha ao carregar Handlers:"), err);
 }
+
+// --- EVENTO READY ---
+client.on('ready', async () => {
+    console.log(colors.green(`✅ Bot ${client.user.tag} conectado e pronto!`));
+    
+    // Atualiza invites no cache inicial
+    try { await TodosInvites(client); } catch(e) {}
+
+    // Inicialização das funções automáticas com delay para evitar sobrecarga
+    setTimeout(() => {
+        try {
+            sendMessage(client);
+            agendarRepostagem(client);
+            console.log(colors.magenta("[SISTEMA] Funções automáticas iniciadas."));
+        } catch (err) {
+            console.error(colors.red("[ERRO] Falha nos loops automáticos:"), err.message);
+        }
+    }, 5000);
+});
+
+// --- TRATAMENTO DE ERROS GLOBAL (ANTI-CRASH 2.0) ---
+process.on('unhandledRejection', (reason) => {
+    const msg = reason?.message || "";
+    if (msg.includes("Unexpected token '<'") || msg.includes("502") || msg.includes("504")) {
+        return console.log(colors.yellow(`⚠️ [Xenza Alerta] Erro de conexão/API (HTML). Ignorado.`));
+    }
+    console.log(colors.red(`🚫 Erro Rejeitado:\n`), reason);
+});
+
+process.on('uncaughtException', (error) => {
+    console.log(colors.red(`🚫 Erro Crítico (uncaughtException):\n`), error);
+});
+
+// --- GERENCIAMENTO DE GUILDAS (LIMITADOR) ---
+client.on('guildCreate', async (guild) => {
+    if (client.guilds.cache.size > 1) { 
+        console.log(colors.red(`[AVISO] Tentativa de entrada em nova guilda: ${guild.name}. Saindo...`));
+        try { await guild.leave(); } catch (e) { console.error('Erro ao sair:', e); }
+    }
+});
+
+// --- SISTEMA DE LOGS ---
+const getLogChannel = (type) => configuracao.get(`ConfigChannels.${type}`);
+
+client.on('messageDelete', (message) => {
+    const id = getLogChannel('mensagens');
+    if (id) handleDeletedMessage(message, id, client);
+});
+
+client.on('messageUpdate', (oldM, newM) => {
+    const id = getLogChannel('mensagens');
+    if (id) handleUpdatedMessage(oldM, newM, id, client);
+});
+
+client.on('voiceStateUpdate', (oldS, newS) => {
+    const id = getLogChannel('tráfego');
+    if (id) handleVoiceStateUpdate(oldS, newS, id, client);
+});
+
+client.on('guildMemberUpdate', (oldM, newM) => {
+    const id = getLogChannel('perfil');
+    if (id) handleProfileUpdate(oldM, newM, id, client);
+});
+
+// --- EVENTOS DE INVITES ---
+client.on('inviteCreate', () => TodosInvites(client));
+client.on('inviteDelete', () => TodosInvites(client));
+
+// --- RESET DE CARRINHOS (OTIMIZADO) ---
+const cartPath = path.join(__dirname, 'DataBaseJson', 'carrinhos.json');
+const resetCarrinhos = () => {
+    fs.writeFileSync(cartPath, JSON.stringify({}, null, 2));
+    console.log(colors.yellow('[SISTEMA] Banco de carrinhos resetado com sucesso!'));
+};
 
 schedule.scheduleJob({ hour: 5, minute: 55, tz: 'America/Sao_Paulo' }, resetCarrinhos);
 
-// --- LOGIN ÚNICO (ESTRUTURA FINAL) ---
+// --- LOGIN ---
 const TOKEN = process.env.TOKEN;
-
 if (!TOKEN) {
-    console.error(colors.bgRed(" ERRO: Token não encontrado! Verifique as variáveis de ambiente na Render. "));
+    console.error(colors.bgRed(" ERRO: Variável TOKEN não configurada! "));
 } else {
-    client.login(TOKEN).catch((err) => {
-        if (err?.message?.includes("intent")) {
-            console.log(`${colors.red(`[LOG]`)} Intents inválidas! Ative-as no Portal do Desenvolvedor.`);
-        } else if (err?.message?.includes("invalid")) {
-            console.log(`${colors.red(`[LOG]`)} Token inválido!`);
-        } else {
-            console.error(colors.red("Erro ao fazer login no Discord:"), err.message);
-        }
+    client.login(TOKEN).catch(err => {
+        console.error(colors.red("❌ Falha no login:"), err.message);
     });
 }
