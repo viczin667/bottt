@@ -143,7 +143,7 @@ const job = schedule.scheduleJob({ hour: 5, minute: 55, tz: 'America/Sao_Paulo' 
 });
 schedule.scheduleJob({ hour: 5, minute: 55, tz: 'America/Sao_Paulo' }, resetCarrinhos);
 // No final do seu index.js
-const token = process.env.TOKEN || process.env.TOKEN;
+const token = process.env.TOKEN;
 
 if (!token) {
     console.error("ERRO: Token não encontrado! Verifique as variáveis no Render.");
