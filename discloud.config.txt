@@ -6,5 +6,5 @@ RAM=256
 AUTORESTART=false
 VERSION=latest
 APT=tools
-START=
-BUILD=
+START=node .
+BUILD=npm install
