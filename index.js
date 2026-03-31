@@ -5,16 +5,21 @@ const schedule = require('node-schedule');
 const fs = require('fs');
 const path = require('path');
 const colors = require("colors");
+const axios = require('axios'); // Necessário para o auto-ping
 
-// --- INICIALIZAÇÃO DO EXPRESS (PRIORIDADE RENDER) ---
+// --- INICIALIZAÇÃO DO EXPRESS (AJUSTADO PARA RENDER) ---
 const app = express();
-app.get('/', (req, res) => res.send('Xenza Bot Online'));
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 10000; // Render usa a 10000 por padrão
+
+app.get('/', (req, res) => {
+    res.status(200).send('Xenza System Online');
+});
+
 app.listen(port, '0.0.0.0', () => {
     console.log(colors.cyan(`[SISTEMA] Porta ${port} aberta. Keep-alive pronto.`));
 });
 
-// --- CLIENTE COM PARTIALS (EVITA ERROS EM MSGS ANTIGAS) ---
+// --- CLIENTE COM INTENTS COMPLETAS E PARTIALS ---
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
@@ -25,16 +30,24 @@ const client = new Client({
         GatewayIntentBits.DirectMessages,
         GatewayIntentBits.GuildInvites,
         GatewayIntentBits.GuildMessageReactions,
+        GatewayIntentBits.GuildPresences, // Adicionado para rastrear status
     ],
-    partials: [Partials.Message, Partials.Channel, Partials.Reaction, Partials.User, Partials.GuildMember]
+    partials: [
+        Partials.Message, 
+        Partials.Channel, 
+        Partials.Reaction, 
+        Partials.User, 
+        Partials.GuildMember,
+        Partials.DirectMessages // Adicionado para garantir logs de DM
+    ]
 });
 
-client.setMaxListeners(100); // Aumentado levemente para suportar múltiplos handlers
+client.setMaxListeners(0); // Remove o limite para evitar avisos de memory leak em bots grandes
 
 // --- EXPORTAÇÃO DE INSTÂNCIAS ---
 const estatisticasKingInstance = require("./Functions/VariaveisEstatisticas");
 const EstatisticasKing = new estatisticasKingInstance();
-module.exports = { client, EstatisticasKing }; // Exportando client para outras funções se necessário
+module.exports = { client, EstatisticasKing };
 
 // --- IMPORTAÇÃO DE FUNÇÕES E HANDLERS ---
 const { AtivarIntents } = require("./Functions/StartIntents");
@@ -69,7 +82,7 @@ client.on('ready', async () => {
     // Atualiza invites no cache inicial
     try { await TodosInvites(client); } catch(e) {}
 
-    // Inicialização das funções automáticas com delay para evitar sobrecarga
+    // Inicialização das funções automáticas
     setTimeout(() => {
         try {
             sendMessage(client);
@@ -79,18 +92,32 @@ client.on('ready', async () => {
             console.error(colors.red("[ERRO] Falha nos loops automáticos:"), err.message);
         }
     }, 5000);
+
+    // AUTO-PING PARA EVITAR SLEEP DO RENDER
+    setInterval(async () => {
+        try {
+            const url = `https://${process.env.RENDER_EXTERNAL_HOSTNAME}`;
+            if (process.env.RENDER_EXTERNAL_HOSTNAME) {
+                await axios.get(url);
+                console.log(colors.gray(`[KEEP-ALIVE] Ping enviado para manter o bot acordado.`));
+            }
+        } catch (e) {
+            // Silencioso para não poluir o log
+        }
+    }, 280000); // A cada 4.6 minutos
 });
 
-// --- TRATAMENTO DE ERROS GLOBAL (ANTI-CRASH 2.0) ---
+// --- TRATAMENTO DE ERROS GLOBAL (ANTI-CRASH 3.0) ---
 process.on('unhandledRejection', (reason) => {
     const msg = reason?.message || "";
-    if (msg.includes("Unexpected token '<'") || msg.includes("502") || msg.includes("504")) {
-        return console.log(colors.yellow(`⚠️ [Xenza Alerta] Erro de conexão/API (HTML). Ignorado.`));
+    if (msg.includes("Unexpected token '<'") || msg.includes("502") || msg.includes("504") || msg.includes("429")) {
+        return console.log(colors.yellow(`⚠️ [Xenza Alerta] API Discord instável ou IP Bloqueado (429/HTML). Ignorado.`));
     }
     console.log(colors.red(`🚫 Erro Rejeitado:\n`), reason);
 });
 
 process.on('uncaughtException', (error) => {
+    if (error.message.includes("ECONNRESET")) return; // Ignora quedas de rede comuns
     console.log(colors.red(`🚫 Erro Crítico (uncaughtException):\n`), error);
 });
 
@@ -132,8 +159,10 @@ client.on('inviteDelete', () => TodosInvites(client));
 // --- RESET DE CARRINHOS (OTIMIZADO) ---
 const cartPath = path.join(__dirname, 'DataBaseJson', 'carrinhos.json');
 const resetCarrinhos = () => {
-    fs.writeFileSync(cartPath, JSON.stringify({}, null, 2));
-    console.log(colors.yellow('[SISTEMA] Banco de carrinhos resetado com sucesso!'));
+    if (fs.existsSync(cartPath)) {
+        fs.writeFileSync(cartPath, JSON.stringify({}, null, 2));
+        console.log(colors.yellow('[SISTEMA] Banco de carrinhos resetado com sucesso!'));
+    }
 };
 
 schedule.scheduleJob({ hour: 5, minute: 55, tz: 'America/Sao_Paulo' }, resetCarrinhos);
@@ -141,9 +170,13 @@ schedule.scheduleJob({ hour: 5, minute: 55, tz: 'America/Sao_Paulo' }, resetCarr
 // --- LOGIN ---
 const TOKEN = process.env.TOKEN;
 if (!TOKEN) {
-    console.error(colors.bgRed(" ERRO: Variável TOKEN não configurada! "));
+    console.error(colors.bgRed(" ERRO: Variável TOKEN não configurada no Render! "));
 } else {
     client.login(TOKEN).catch(err => {
-        console.error(colors.red("❌ Falha no login:"), err.message);
+        if (err.message.includes("Used disallowed intents")) {
+            console.error(colors.red("❌ ERRO: Você precisa ativar 'GUILD_MEMBERS' e 'MESSAGE_CONTENT' no Discord Developer Portal!"));
+        } else {
+            console.error(colors.red("❌ Falha no login:"), err.message);
+        }
     });
 }
