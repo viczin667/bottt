@@ -1,11 +1,12 @@
 const { ApplicationCommandType, ApplicationCommandOptionType, PermissionFlagsBits, EmbedBuilder } = require("discord.js");
-const { configuracao } = require("../../DataBaseJson"); // Certifique-se que o caminho está correto para o seu arquivo de banco
+const { configuracao } = require("../../DataBaseJson"); 
+const colors = require("colors");
 
 module.exports = {
   name: "desconfigurar",
   description: "[Admin] Desativa um canal de log específico.",
   type: ApplicationCommandType.ChatInput,
-  default_member_permissions: PermissionFlagsBits.Administrator, // Apenas Admins podem usar
+  default_member_permissions: PermissionFlagsBits.Administrator, 
   options: [
     {
       name: "funcao",
@@ -22,19 +23,43 @@ module.exports = {
   ],
 
   run: async (client, interaction) => {
-    const funcao = interaction.options.getString("funcao");
+    // --- PREVINE O ERRO "O APLICATIVO NÃO RESPONDEU" ---
+    // Isso dá ao Render tempo para processar o banco de dados
+    await interaction.deferReply({ ephemeral: true });
 
-    // Remove o ID do canal do banco de dados (seta como null ou vazio)
-    configuracao.set(`ConfigChannels.${funcao}`, null);
+    try {
+        const funcao = interaction.options.getString("funcao");
 
-    const embed = new EmbedBuilder()
-      .setTitle("⚙️ Configuração Removida")
-      .setDescription(`O log de **${funcao}** foi desativado com sucesso. O bot não enviará mais notificações desta função.`)
-      .setColor("Red")
-      .setFooter({ text: "Xenza System" });
+        // --- ATUALIZAÇÃO DO BANCO DE DATOS ---
+        // Remove o ID do canal para desativar a função
+        configuracao.set(`ConfigChannels.${funcao}`, null);
 
-    await interaction.reply({ embeds: [embed], ephemeral: true });
-    
-    console.log(`[LOG] O administrador ${interaction.user.tag} desativou o log de ${funcao}.`);
+        // --- CONSTRUÇÃO DA EMBED DE SUCESSO ---
+        const embed = new EmbedBuilder()
+          .setTitle("⚙️ Configuração Removida")
+          .setDescription(`O sistema de **${funcao}** foi desativado com sucesso.\nO bot não enviará mais logs para este canal.`)
+          .setColor("#FF0000") // Vermelho para indicar remoção
+          .setTimestamp()
+          .setFooter({ 
+            text: `Executado por: ${interaction.user.username}`, 
+            iconURL: client.user.displayAvatarURL() 
+          });
+
+        // --- ENVIO DA RESPOSTA FINAL ---
+        await interaction.editReply({ embeds: [embed] });
+
+        // Log no console do Render para conferência
+        console.log(colors.yellow(`[LOGS] Configuração de ${funcao} removida por ${interaction.user.tag}`));
+
+    } catch (error) {
+        console.error(colors.red("❌ Erro no comando desconfigurar:"), error);
+        
+        // Caso ocorra um erro, avisa o usuário sem deixar o comando "carregando" pra sempre
+        if (interaction.deferred) {
+            await interaction.editReply({ 
+                content: "❌ Ocorreu um erro interno ao tentar remover esta configuração. Verifique o console do Render." 
+            });
+        }
+    }
   }
 };
