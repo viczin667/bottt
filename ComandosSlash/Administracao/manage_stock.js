@@ -1,28 +1,37 @@
-const { PermissionFlagsBits, EmbedBuilder, ApplicationCommandType, ActionRowBuilder, ButtonBuilder } = require("discord.js");
+const { PermissionFlagsBits, ApplicationCommandType } = require("discord.js");
 const { MessageStock } = require("../../Functions/ConfigEstoque.js");
-const { Emojis } = require("../../DataBaseJson");
+const { Emojis, perms } = require("../../DataBaseJson");
 
 module.exports = {
   name: "manage_stock",
-  description: "Use para configurar minhas funções",
+  description: "📦 [Xenza] Abastecer e gerenciar estoque",
   type: ApplicationCommandType.ChatInput,
-  options: [{ name: "item", description: "-", type: 3, required: true, autocomplete: true }],
+  options: [{ 
+    name: "item", 
+    description: "Selecione o item para gerenciar o estoque", 
+    type: 3, 
+    required: true, 
+    autocomplete: true 
+  }],
   default_member_permissions: PermissionFlagsBits.Administrator,
 
-  run: async (client, interaction, message) => {
+  run: async (client, interaction) => {
+    const isOwner = interaction.guild.ownerId === interaction.user.id;
+    const isStaff = await perms.get(interaction.user.id);
 
-            if (interaction.guild.ownerId !== interaction.user.id) {
-            return interaction.reply({  content: `${Emojis.get(`negative_emoji`)} Faltam permissões.`, ephemeral: true });
-        }
+    if (!isOwner && !isStaff) {
+        return interaction.reply({ content: `${Emojis.get(`negative_emoji`)} Acesso restrito ao estoque.`, ephemeral: true });
+    }
 
-    if (interaction.options._hoistedOptions[0].value == 'nada') return interaction.reply({ content: `Nenhum item registrado em seu BOT`, ephemeral: true })
+    const itemValue = interaction.options.getString('item');
+    if (itemValue === 'nada') return interaction.reply({ content: `❌ Sem estoque disponível para gerenciar.`, ephemeral: true });
 
+    const [produtoname, camponame] = itemValue.split('_');
 
-    const separarpor_ = interaction.options._hoistedOptions[0].value.split('_')
-    const produtoname = separarpor_[0]
-    const camponame = separarpor_[1]
+    // O cliente odeia esperar, mas o Admin precisa de precisão.
+    // Damos o feedback imediato para evitar o erro de 3 segundos do Discord.
+    await interaction.reply({ content: `${Emojis.get(`loading_emoji`)} Sincronizando banco de dados de estoque...`, ephemeral: true });
 
-    MessageStock(interaction, 1, produtoname, camponame)
-
+    return MessageStock(interaction, 1, produtoname, camponame);
   }
 }
