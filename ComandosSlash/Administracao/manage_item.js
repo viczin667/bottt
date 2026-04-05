@@ -1,33 +1,43 @@
-const { PermissionFlagsBits, EmbedBuilder, ApplicationCommandType, ActionRowBuilder, ButtonBuilder } = require("discord.js");
-const { QuickDB } = require("quick.db");
+const { PermissionFlagsBits, ApplicationCommandType } = require("discord.js");
 const { GerenciarCampos2 } = require("../../Functions/GerenciarCampos");
-const { Emojis } = require("../../DataBaseJson");
-const db = new QuickDB();
+const { Emojis, perms } = require("../../DataBaseJson");
 
 module.exports = {
   name: "manage_item",
-  description: "Use para configurar minhas funções",
+  description: "🏷️ [Xenza] Configurar variações e detalhes do item",
   type: ApplicationCommandType.ChatInput,
-  options: [{ name: "item", description: "-", type: 3, required: true, autocomplete: true }],
+  options: [{ 
+    name: "item", 
+    description: "Escolha o item/campo específico", 
+    type: 3, 
+    required: true, 
+    autocomplete: true 
+  }],
   default_member_permissions: PermissionFlagsBits.Administrator,
 
+  run: async (client, interaction) => {
+    const isOwner = interaction.guild.ownerId === interaction.user.id;
+    const isStaff = await perms.get(interaction.user.id);
 
-  run: async (client, interaction, message) => {
+    if (!isOwner && !isStaff) {
+        return interaction.reply({ content: `${Emojis.get(`negative_emoji`)} Permissão negada.`, ephemeral: true });
+    }
 
-            if (interaction.guild.ownerId !== interaction.user.id) {
-            return interaction.reply({  content: `${Emojis.get(`negative_emoji`)} Faltam permissões.`, ephemeral: true });
+    const itemValue = interaction.options.getString('item');
+    if (itemValue === 'nada') return interaction.reply({ content: `❌ Nenhum item registrado.`, ephemeral: true });
+
+    try {
+        const [produtoname, camponame] = itemValue.split('_');
+        
+        if (!produtoname || !camponame) {
+            return interaction.reply({ content: "⚠️ Formato de item inválido na DataBase.", ephemeral: true });
         }
 
-    if (interaction.options._hoistedOptions[0].value == 'nada') return interaction.reply({ content: `Nenhum item registrado em seu BOT`, ephemeral: true })
-
-
-    const separarpor_ = interaction.options._hoistedOptions[0].value.split('_')
-    const produtoname = separarpor_[0]
-    const camponame = separarpor_[1]
-
-    GerenciarCampos2(interaction, camponame, produtoname)
-
-
-
+        await interaction.reply({ content: `${Emojis.get(`loading_emoji`)} Carregando detalhes do item...`, ephemeral: true });
+        return GerenciarCampos2(interaction, camponame, produtoname);
+        
+    } catch (err) {
+        return interaction.editReply({ content: "🔥 Erro ao processar o item selecionado." });
+    }
   }
 }
