@@ -4,7 +4,7 @@ const { Emojis, perms } = require("../../DataBaseJson");
 
 module.exports = {
   name: "manage_stock",
-  description: "📦 [Xenza] Abastecer e gerenciar estoque",
+  description: "📦 [Xenza] Abastecer e gerenciar estoque interno",
   type: ApplicationCommandType.ChatInput,
   options: [{ 
     name: "item", 
@@ -24,12 +24,11 @@ module.exports = {
     }
 
     const itemValue = interaction.options.getString('item');
-    if (itemValue === 'nada') return interaction.reply({ content: `❌ Sem estoque disponível para gerenciar.`, ephemeral: true });
+    if (!itemValue || itemValue === 'nada') return interaction.reply({ content: `❌ Selecione um item válido.`, ephemeral: true });
 
     const [produtoname, camponame] = itemValue.split('_');
 
-    // O cliente odeia esperar, mas o Admin precisa de precisão.
-    // Damos o feedback imediato para evitar o erro de 3 segundos do Discord.
+    // Sincronização rápida para evitar timeout no Render
     await interaction.reply({ content: `${Emojis.get(`loading_emoji`)} Sincronizando banco de dados de estoque...`, ephemeral: true });
 
     return MessageStock(interaction, 1, produtoname, camponame);
