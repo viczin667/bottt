@@ -1,6 +1,6 @@
 const { PermissionFlagsBits, ApplicationCommandType, ApplicationCommandOptionType } = require("discord.js");
 const { Painel } = require("../../Functions/Painel");
-const { Emojis, configuracao } = require("../../DataBaseJson");
+const { Emojis } = require("../../DataBaseJson");
 const { owner } = require('../../config.json');
 
 module.exports = {
@@ -11,37 +11,34 @@ module.exports = {
   options: [
     {
       name: "id_venda",
-      description: "ID do produto configurado no setconfig (Ex: roblox, ff, host)",
+      description: "ID do produto (Ex: roblox, ff, host)",
       type: ApplicationCommandOptionType.String,
-      required: true // Agora é obrigatório para o bot saber o que exibir
+      required: true
     }
   ],
 
   run: async (client, interaction) => {
+    // 1. Responda imediatamente com deferReply (ephemeral: true para não poluir o chat)
+    await interaction.deferReply({ ephemeral: true });
+
     if (!owner.includes(interaction.user.id)) {
-      return await interaction.reply({
-        content: `${Emojis.get(`negative_emoji`)} Você não possui permissão para usar este comando.`,
-        ephemeral: true
+      return await interaction.editReply({
+        content: `${Emojis.get(`negative_emoji`)} Você não possui permissão.`
       });
     }
 
     const idVenda = interaction.options.getString("id_venda");
 
-    // Verifica se esse ID foi configurado no setconfig antes de enviar
-    const checkConfig = configuracao.get(`VendasAtivas.${interaction.channelId}`);
-    
-    if (!checkConfig || checkConfig.id !== idVenda) {
-        return interaction.reply({
-            content: `⚠️ Este canal não está configurado para o ID: **${idVenda}**. Use \`/setconfig\` primeiro.`,
-            ephemeral: true
-        });
+    try {
+        // 2. Chama a função que envia o painel no canal
+        await Painel(interaction, client, idVenda);
+        
+        // 3. Edita a resposta inicial confirmando o envio
+        await interaction.editReply({ content: "✅ Painel enviado com sucesso!" });
+
+    } catch (error) {
+        console.error("Erro ao enviar painel:", error);
+        await interaction.editReply({ content: "❌ Ocorreu um erro ao gerar o painel. Verifique o console." });
     }
-
-    await interaction.deferReply({ ephemeral: true });
-
-    // Passamos o idVenda para a função Painel para ela saber qual Embed/Botão gerar
-    Painel(interaction, client, idVenda);
-    
-    await interaction.editReply({ content: "✅ Painel enviado com sucesso!" });
   }
 }
