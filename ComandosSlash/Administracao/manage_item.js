@@ -4,11 +4,11 @@ const { Emojis, perms } = require("../../DataBaseJson");
 
 module.exports = {
   name: "manage_item",
-  description: "🏷️ [Xenza] Configurar variações e detalhes do item",
+  description: "🏷️ [Xenza] Configurar variações e preços dos itens",
   type: ApplicationCommandType.ChatInput,
   options: [{ 
     name: "item", 
-    description: "Escolha o item/campo específico", 
+    description: "Escolha o item/variação específica", 
     type: 3, 
     required: true, 
     autocomplete: true 
@@ -24,20 +24,20 @@ module.exports = {
     }
 
     const itemValue = interaction.options.getString('item');
-    if (itemValue === 'nada') return interaction.reply({ content: `❌ Nenhum item registrado.`, ephemeral: true });
+    if (!itemValue || itemValue === 'nada') return interaction.reply({ content: `❌ Nenhum item selecionado.`, ephemeral: true });
 
     try {
         const [produtoname, camponame] = itemValue.split('_');
         
         if (!produtoname || !camponame) {
-            return interaction.reply({ content: "⚠️ Formato de item inválido na DataBase.", ephemeral: true });
+            return interaction.reply({ content: "⚠️ Formato de item inválido.", ephemeral: true });
         }
 
-        await interaction.reply({ content: `${Emojis.get(`loading_emoji`)} Carregando detalhes do item...`, ephemeral: true });
+        await interaction.reply({ content: `${Emojis.get(`loading_emoji`)} Carregando detalhes do item e valores...`, ephemeral: true });
         return GerenciarCampos2(interaction, camponame, produtoname);
         
     } catch (err) {
-        return interaction.editReply({ content: "🔥 Erro ao processar o item selecionado." });
+        return interaction.editReply({ content: "🔥 Erro crítico ao processar o item." });
     }
   }
 }
