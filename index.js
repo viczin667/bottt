@@ -1,182 +1,142 @@
-require('dotenv').config();
-const { GatewayIntentBits, Client, Collection, Partials } = require("discord.js");
-const express = require('express');
-const schedule = require('node-schedule');
-const fs = require('fs');
-const path = require('path');
-const colors = require("colors");
-const axios = require('axios'); // Necessário para o auto-ping
+const client = require("../../index");
+const Discord = require("discord.js");
+const { 
+    EmbedBuilder, ActionRowBuilder, ButtonBuilder, ModalBuilder, 
+    TextInputBuilder, TextInputStyle, InteractionType, StringSelectMenuBuilder 
+} = require("discord.js");
 
-// --- INICIALIZAÇÃO DO EXPRESS (AJUSTADO PARA RENDER) ---
-const app = express();
-const port = process.env.PORT || 10000; // Render usa a 10000 por padrão
+// Importações Alinhadas com seu Index e DataBase
+const { produtos, configuracao, perms, Emojis } = require("../../DataBaseJson");
+const { GerenciarProduto } = require("../../Functions/CreateProduto");
+const { GerenciarCampos, GerenciarCampos2 } = require("../../Functions/GerenciarCampos");
+const { UpdateMessageProduto } = require("../../Functions/SenderMessagesOrUpdates");
+const { semiConfigs } = require("../../Functions/semiConfigs");
+const { gerenciarPerms } = require("../../Functions/modUsersPerms");
+const { QuickDB } = require("quick.db");
+const db = new QuickDB();
 
-app.get('/', (req, res) => {
-    res.status(200).send('Xenza System Online');
-});
+module.exports = {
+    name: 'interactionCreate',
 
-app.listen(port, '0.0.0.0', () => {
-    console.log(colors.cyan(`[SISTEMA] Porta ${port} aberta. Keep-alive pronto.`));
-});
+    run: async (interaction, client) => {
+        
+        // --- SISTEMA DE SEGURANÇA XENZA (PROTOCOLO ADMIN) ---
+        // Verifica se o usuário tem permissão na DB ou é Admin do Servidor
+        const isAdmin = perms.get(interaction.user.id) || interaction.member.permissions.has(Discord.PermissionFlagsBits.Administrator);
 
-// --- CLIENTE COM INTENTS COMPLETAS E PARTIALS ---
-const client = new Client({
-    intents: [
-        GatewayIntentBits.Guilds,
-        GatewayIntentBits.GuildMessages,
-        GatewayIntentBits.MessageContent,
-        GatewayIntentBits.GuildMembers,
-        GatewayIntentBits.GuildVoiceStates,
-        GatewayIntentBits.DirectMessages,
-        GatewayIntentBits.GuildInvites,
-        GatewayIntentBits.GuildMessageReactions,
-        GatewayIntentBits.GuildPresences, // Adicionado para rastrear status
-    ],
-    partials: [
-        Partials.Message, 
-        Partials.Channel, 
-        Partials.Reaction, 
-        Partials.User, 
-        Partials.GuildMember,
-        Partials.DirectMessages // Adicionado para garantir logs de DM
-    ]
-});
+        // --- 1. GESTÃO DE BOTÕES ---
+        if (interaction.isButton()) {
+            const { customId } = interaction;
 
-client.setMaxListeners(0); // Remove o limite para evitar avisos de memory leak em bots grandes
-
-// --- EXPORTAÇÃO DE INSTÂNCIAS ---
-const estatisticasKingInstance = require("./Functions/VariaveisEstatisticas");
-const EstatisticasKing = new estatisticasKingInstance();
-module.exports = { client, EstatisticasKing };
-
-// --- IMPORTAÇÃO DE FUNÇÕES E HANDLERS ---
-const { AtivarIntents } = require("./Functions/StartIntents");
-const { configuracao } = require("./DataBaseJson");
-const { handleDeletedMessage, handleUpdatedMessage } = require('./Functions/MsgsLogs');
-const { handleVoiceStateUpdate } = require('./Functions/VoiceLogs');
-const { handleProfileUpdate } = require('./Functions/ProfileLog');
-const { agendarRepostagem } = require('./Functions/repostagem');
-const { sendMessage } = require('./Functions/MsgAutomatics');
-const { TodosInvites } = require("./Eventos/Bot/Entrada");
-
-const events = require('./Handler/events');
-const slash = require('./Handler/slash');
-
-// Inicialização de intents extras
-AtivarIntents();
-
-client.slashCommands = new Collection();
-
-// --- INICIALIZAÇÃO DE HANDLERS ---
-try {
-    slash.run(client);
-    events.run(client);
-} catch (err) {
-    console.error(colors.red("[ERRO] Falha ao carregar Handlers:"), err);
-}
-
-// --- EVENTO READY ---
-client.on('ready', async () => {
-    console.log(colors.green(`✅ Bot ${client.user.tag} conectado e pronto!`));
-    
-    // Atualiza invites no cache inicial
-    try { await TodosInvites(client); } catch(e) {}
-
-    // Inicialização das funções automáticas
-    setTimeout(() => {
-        try {
-            sendMessage(client);
-            agendarRepostagem(client);
-            console.log(colors.magenta("[SISTEMA] Funções automáticas iniciadas."));
-        } catch (err) {
-            console.error(colors.red("[ERRO] Falha nos loops automáticos:"), err.message);
-        }
-    }, 5000);
-
-    // AUTO-PING PARA EVITAR SLEEP DO RENDER
-    setInterval(async () => {
-        try {
-            const url = `https://${process.env.RENDER_EXTERNAL_HOSTNAME}`;
-            if (process.env.RENDER_EXTERNAL_HOSTNAME) {
-                await axios.get(url);
-                console.log(colors.gray(`[KEEP-ALIVE] Ping enviado para manter o bot acordado.`));
+            // Bloqueio de Segurança para funções críticas
+            const restricted = ["gerenciarotemae", "ConfigurarPagamentoManual", "onOffSemi", "addcampoo"];
+            if (restricted.includes(customId) && !isAdmin) {
+                return interaction.reply({ content: `❌ Acesso negado. Apenas administradores da Xenza podem alterar configurações.`, ephemeral: true });
             }
-        } catch (e) {
-            // Silencioso para não poluir o log
+
+            // Funções de Utilidade Pública (Unlock Channel)
+            if (customId === "unlockChannel") {
+                await interaction.channel.permissionOverwrites.edit(interaction.guild.id, { SendMessages: true });
+                return interaction.update({
+                    embeds: [new EmbedBuilder().setDescription(`🔓 Canal destrancado por ${interaction.user}`).setColor("#00FF00")],
+                    components: [new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('un').setLabel('Liberado').setStyle(2).setDisabled(true))]
+                });
+            }
+
+            // Navegação do Painel Administrativo
+            switch (customId) {
+                case "gerenciarotemae":
+                    await interaction.update({ content: `${Emojis.get(`loading_emoji`)} Carregando Catálogo...`, embeds: [], components: [] });
+                    const allProds = produtos.fetchAll();
+                    const menu = new StringSelectMenuBuilder().setCustomId('configproduto_1').setPlaceholder('Selecione um produto para editar');
+                    allProds.slice(0, 25).forEach(p => menu.addOptions({ label: p.ID, value: p.ID, emoji: "1178163524443316285" }));
+                    return interaction.editReply({ content: '⚙️ **Painel Xenza V270 - Gerenciamento de Produtos**', components: [new ActionRowBuilder().addComponents(menu)] });
+
+                case "ConfigurarPagamentoManual":
+                    return semiConfigs(interaction, client);
+
+                case "onOffSemi":
+                    const status = configuracao.get("pagamentos.SemiAutomatico.status");
+                    configuracao.set("pagamentos.SemiAutomatico.status", !status);
+                    return semiConfigs(interaction, client);
+
+                case "gerenciarcampossss":
+                    const msgData = await db.get(interaction.message.id);
+                    const campos = produtos.get(`${msgData.name}.Campos`) || [];
+                    if (campos.length === 0) return interaction.reply({ content: "Este produto não possui campos.", ephemeral: true });
+                    const selCampos = new StringSelectMenuBuilder().setCustomId('configurarcampooo').setPlaceholder('Selecione o campo');
+                    campos.forEach(c => selCampos.addOptions({ label: c.Nome, value: c.Nome }));
+                    return interaction.update({ components: [new ActionRowBuilder().addComponents(selCampos)], content: `Editando campos de: **${msgData.name}**`, embeds: [] });
+
+                case "voltargerenciarproduto":
+                    const backData = await db.get(interaction.message.id);
+                    return GerenciarProduto(interaction, 2, backData.name);
+            }
+
+            // Funções Dinâmicas (Estoque e Preço)
+            if (customId.startsWith('add_stock_')) {
+                const id = customId.replace('add_stock_', '');
+                const modal = new ModalBuilder().setCustomId(`modal_stock_${id}`).setTitle(`Abastecer Estoque: ${id}`);
+                const input = new TextInputBuilder().setCustomId('data').setLabel("ITENS (UM POR LINHA)").setStyle(TextInputStyle.Paragraph).setRequired(true);
+                return interaction.showModal(modal.addComponents(new ActionRowBuilder().addComponents(input)));
+            }
         }
-    }, 280000); // A cada 4.6 minutos
-});
 
-// --- TRATAMENTO DE ERROS GLOBAL (ANTI-CRASH 3.0) ---
-process.on('unhandledRejection', (reason) => {
-    const msg = reason?.message || "";
-    if (msg.includes("Unexpected token '<'") || msg.includes("502") || msg.includes("504") || msg.includes("429")) {
-        return console.log(colors.yellow(`⚠️ [Xenza Alerta] API Discord instável ou IP Bloqueado (429/HTML). Ignorado.`));
-    }
-    console.log(colors.red(`🚫 Erro Rejeitado:\n`), reason);
-});
+        // --- 2. GESTÃO DE MENUS DE SELEÇÃO ---
+        if (interaction.isStringSelectMenu()) {
+            if (interaction.customId.startsWith('configproduto_')) return GerenciarProduto(interaction, 2, interaction.values[0]);
+            if (interaction.customId === 'configurarcampooo') return GerenciarCampos2(interaction, interaction.values[0]);
+            
+            if (interaction.customId === 'selectAdd&RemPerm') {
+                const isAdd = interaction.values[0] === 'addPermUser';
+                const modal = new ModalBuilder().setCustomId(isAdd ? "adicionarmember_modal" : "removemember_modal").setTitle(isAdd ? "Adicionar Permissão" : "Remover Permissão");
+                const input = new TextInputBuilder().setCustomId("text").setLabel("ID DO USUÁRIO").setStyle(TextInputStyle.Short).setRequired(true);
+                return interaction.showModal(modal.addComponents(new ActionRowBuilder().addComponents(input)));
+            }
+        }
 
-process.on('uncaughtException', (error) => {
-    if (error.message.includes("ECONNRESET")) return; // Ignora quedas de rede comuns
-    console.log(colors.red(`🚫 Erro Crítico (uncaughtException):\n`), error);
-});
+        // --- 3. GESTÃO DE MODALS (SUBMIT) ---
+        if (interaction.type === InteractionType.ModalSubmit) {
+            const { customId, fields } = interaction;
 
-// --- GERENCIAMENTO DE GUILDAS (LIMITADOR) ---
-client.on('guildCreate', async (guild) => {
-    if (client.guilds.cache.size > 1) { 
-        console.log(colors.red(`[AVISO] Tentativa de entrada em nova guilda: ${guild.name}. Saindo...`));
-        try { await guild.leave(); } catch (e) { console.error('Erro ao sair:', e); }
-    }
-});
+            // Salvamento de Estoque
+            if (customId.startsWith('modal_stock_')) {
+                const id = customId.replace('modal_stock_', '');
+                const rawItens = fields.getTextInputValue('data').split('\n').filter(i => i.trim() !== "");
+                const oldEstoque = produtos.get(`${id}.estoque`) || [];
+                produtos.set(`${id}.estoque`, [...oldEstoque, ...rawItens]);
+                
+                await interaction.reply({ content: `✅ **${rawItens.length}** itens adicionados ao estoque de **${id}**.`, ephemeral: true });
+                return UpdateMessageProduto(client, id);
+            }
 
-// --- SISTEMA DE LOGS ---
-const getLogChannel = (type) => configuracao.get(`ConfigChannels.${type}`);
+            // Configuração de Pagamento Manual (PIX)
+            if (customId === 'ConfigurarPagamentoManual2') {
+                configuracao.set(`pagamentos.SemiAutomatico.pix`, fields.getTextInputValue('tokenMP2'));
+                configuracao.set(`pagamentos.SemiAutomatico.msg`, fields.getTextInputValue('tokenMP3'));
+                await interaction.reply({ content: `✅ Configurações de PIX atualizadas!`, ephemeral: true });
+                return semiConfigs(interaction, client);
+            }
 
-client.on('messageDelete', (message) => {
-    const id = getLogChannel('mensagens');
-    if (id) handleDeletedMessage(message, id, client);
-});
+            // Gerenciamento de Membros Admin
+            if (customId === "adicionarmember_modal") {
+                const userId = fields.getTextInputValue("text");
+                perms.set(userId, userId);
+                await interaction.reply({ content: `✅ Usuário \`${userId}\` agora é um administrador Xenza.`, ephemeral: true });
+                return gerenciarPerms(interaction, client);
+            }
 
-client.on('messageUpdate', (oldM, newM) => {
-    const id = getLogChannel('mensagens');
-    if (id) handleUpdatedMessage(oldM, newM, id, client);
-});
-
-client.on('voiceStateUpdate', (oldS, newS) => {
-    const id = getLogChannel('tráfego');
-    if (id) handleVoiceStateUpdate(oldS, newS, id, client);
-});
-
-client.on('guildMemberUpdate', (oldM, newM) => {
-    const id = getLogChannel('perfil');
-    if (id) handleProfileUpdate(oldM, newM, id, client);
-});
-
-// --- EVENTOS DE INVITES ---
-client.on('inviteCreate', () => TodosInvites(client));
-client.on('inviteDelete', () => TodosInvites(client));
-
-// --- RESET DE CARRINHOS (OTIMIZADO) ---
-const cartPath = path.join(__dirname, 'DataBaseJson', 'carrinhos.json');
-const resetCarrinhos = () => {
-    if (fs.existsSync(cartPath)) {
-        fs.writeFileSync(cartPath, JSON.stringify({}, null, 2));
-        console.log(colors.yellow('[SISTEMA] Banco de carrinhos resetado com sucesso!'));
+            // Cadastro de Novos Produtos
+            if (customId === 'sdaju11111idsjjsdua') {
+                const nomeProd = fields.getTextInputValue('tokenMP').replace(/\s/g, '_');
+                if (produtos.has(nomeProd)) return interaction.reply({ content: "Este produto já existe!", ephemeral: true });
+                
+                produtos.set(nomeProd, { 
+                    Config: { name: nomeProd, desc: fields.getTextInputValue('tokenMP2') || "Sem descrição", entrega: "Sim" },
+                    Campos: [], Cupom: [], estoque: [] 
+                });
+                return GerenciarProduto(interaction, 1, nomeProd);
+            }
+        }
     }
 };
-
-schedule.scheduleJob({ hour: 5, minute: 55, tz: 'America/Sao_Paulo' }, resetCarrinhos);
-
-// --- LOGIN ---
-const TOKEN = process.env.TOKEN;
-if (!TOKEN) {
-    console.error(colors.bgRed(" ERRO: Variável TOKEN não configurada no Render! "));
-} else {
-    client.login(TOKEN).catch(err => {
-        if (err.message.includes("Used disallowed intents")) {
-            console.error(colors.red("❌ ERRO: Você precisa ativar 'GUILD_MEMBERS' e 'MESSAGE_CONTENT' no Discord Developer Portal!"));
-        } else {
-            console.error(colors.red("❌ Falha no login:"), err.message);
-        }
-    });
-}
