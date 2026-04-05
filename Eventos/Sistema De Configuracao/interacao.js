@@ -1,4 +1,5 @@
-const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, InteractionType, StringSelectMenuBuilder } = require("discord.js");
+const Discord = require("discord.js"); // Adicionado para evitar erro de 'Discord is not defined'
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, InteractionType, StringSelectMenuBuilder } = require("discord.js");
 const { produtos, configuracao, perms, Emojis } = require("../../DataBaseJson");
 const { GerenciarProduto } = require("../../Functions/CreateProduto");
 const { GerenciarCampos, GerenciarCampos2 } = require("../../Functions/GerenciarCampos");
@@ -12,24 +13,24 @@ module.exports = {
     name: 'interactionCreate',
     run: async (interaction, client) => {
         const { customId, type, fields, user } = interaction;
+        
+        // Sistema de Permissão Xenza
         const isAdmin = perms.get(user.id) || interaction.member.permissions.has("Administrator");
 
-        // --- [1] AUTOCOMPLETE (BUSCA DE PRODUTOS) ---
+        // --- [1] AUTOCOMPLETE ---
         if (interaction.isAutocomplete()) {
             const input = interaction.options.getFocused().toLowerCase();
             const list = produtos.filter(x => x.ID.toLowerCase().includes(input)).slice(0, 25);
             return interaction.respond(list.map(x => ({ name: `📦 ${x.data?.Config?.name || x.ID}`, value: x.ID })));
         }
 
-        // --- [2] TRATAMENTO DE BOTÕES ---
+        // --- [2] BOTÕES ---
         if (interaction.isButton()) {
-            // Bloqueio de Segurança
             const adminOnly = ["gerenciarotemae", "ConfigurarPagamentoManual", "onOffSemi", "addcampoo", "edit_estetica_"];
             if (adminOnly.some(id => customId.startsWith(id)) && !isAdmin) {
                 return interaction.reply({ content: `❌ Acesso negado à Xenza V270.`, ephemeral: true });
             }
 
-            // Lógica de Estética (V270)
             if (customId.startsWith('edit_estetica_')) {
                 const id = customId.split('_')[2];
                 const data = produtos.get(id).data?.Config || {};
@@ -41,7 +42,7 @@ module.exports = {
                     { id: 'link_p', label: "LINK DA LOJA", val: data.link_site },
                     { id: 'banner_p', label: "URL DO BANNER", val: data.banner }
                 ].map(c => new ActionRowBuilder().addComponents(
-                    new TextInputBuilder().setCustomId(c.id).setLabel(c.label).setValue(c.val || "").setPlaceholder(c.ph || "").setStyle(1)
+                    new TextInputBuilder().setCustomId(c.id).setLabel(c.label).setValue(c.val || "").setPlaceholder(c.ph || "").setStyle(TextInputStyle.Short)
                 ));
                 return interaction.showModal(modal.addComponents(rows));
             }
@@ -49,7 +50,8 @@ module.exports = {
             switch (customId) {
                 case "gerenciarotemae":
                     const menu = new StringSelectMenuBuilder().setCustomId('configproduto_1').setPlaceholder('Selecione o produto');
-                    produtos.fetchAll().slice(0, 25).forEach(p => menu.addOptions({ label: p.ID, value: p.ID, emoji: "📦" }));
+                    const allP = produtos.all(); // fetchAll mudou para .all() em versões novas da database
+                    allP.slice(0, 25).forEach(p => menu.addOptions({ label: p.ID, value: p.ID, emoji: "📦" }));
                     return interaction.reply({ content: 'Painel Xenza:', components: [new ActionRowBuilder().addComponents(menu)], ephemeral: true });
                 
                 case "onOffSemi":
@@ -58,13 +60,12 @@ module.exports = {
                 
                 case "unlockChannel":
                     await interaction.channel.permissionOverwrites.edit(interaction.guild.id, { SendMessages: true });
-                    return interaction.reply({ content: "🔓 Canal liberado." });
+                    return interaction.reply({ content: "🔓 Canal liberado por " + user.username });
             }
         }
 
-        // --- [3] SUBMISSÃO DE MODALS (SALVAMENTO) ---
+        // --- [3] MODALS ---
         if (type === InteractionType.ModalSubmit) {
-            // Salvar Estética
             if (customId.startsWith('modal_estetica_')) {
                 const id = customId.split('_')[2];
                 const [nome, cor, link, banner] = ['nome_p', 'cor_p', 'link_p', 'banner_p'].map(f => fields.getTextInputValue(f));
@@ -81,7 +82,6 @@ module.exports = {
                 return UpdateMessageProduto(client, id);
             }
 
-            // Abastecer Estoque
             if (customId.startsWith('modal_stock_')) {
                 const id = customId.replace('modal_stock_', '');
                 const itens = fields.getTextInputValue('data').split('\n').filter(x => x.trim());
@@ -91,7 +91,7 @@ module.exports = {
             }
         }
 
-        // --- [4] MENUS DE SELEÇÃO ---
+        // --- [4] MENUS ---
         if (interaction.isStringSelectMenu()) {
             if (customId.startsWith('configproduto_')) return GerenciarProduto(interaction, 2, interaction.values[0]);
         }
