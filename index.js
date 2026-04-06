@@ -1,10 +1,21 @@
-const { Client, GatewayIntentBits, Collection, Partials, EmbedBuilder } = require("discord.js");
-const config = require("./config.json");
-const { produtos, configuracao, Emojis } = require("./DataBaseJson"); // Puxando suas bases originais
+const { Client, GatewayIntentBits, Collection, Partials } = require("discord.js");
+const path = require("path");
+const fs = require("fs");
+
+// --- TENTATIVA DE LER CONFIG ---
+let config;
+try {
+    config = require("./config.json");
+} catch (e) {
+    console.log("⚠️ Arquivo config.json não encontrado na raiz, tentando caminhos alternativos...");
+    // Tenta ler das variáveis de ambiente do Render se o config.json falhar
+    config = { token: process.env.TOKEN }; 
+}
+
+const { produtos, configuracao, Emojis } = require("./DataBaseJson"); 
 const { QuickDB } = require("quick.db");
 const db = new QuickDB();
 
-// --- INICIALIZAÇÃO DO CLIENT (CONFIGURAÇÃO ORIGINAL) ---
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
@@ -22,43 +33,60 @@ const client = new Client({
     ],
 });
 
-// Exportação essencial para que as Functions consigam ler o Client
 module.exports = client;
 
-// --- COLEÇÕES ORIGINAIS ---
 client.commands = new Collection();
 client.aliases = new Collection();
 client.slashCommands = new Collection();
 
-// --- CARREGAMENTO DOS HANDLERS (O CORAÇÃO DO BOT) ---
-// Certifique-se de que as pastas 'commands' e 'events' estão na raiz ou dentro da 'src'
-["commands", "events", "slash"].forEach(handler => {
-    try {
-        require(`./handlers/${handler}`)(client);
-    } catch (err) {
-        console.log(`❌ Erro ao carregar handler: ${handler} | Erro: ${err.message}`);
+// --- CARREGAMENTO DOS HANDLERS (SISTEMA DE BUSCA AUTOMÁTICA) ---
+["commands", "events", "slash"].forEach(handlerName => {
+    // Lista de caminhos possíveis onde seus arquivos podem estar
+    const possiblePaths = [
+        path.join(__dirname, "handlers", `${handlerName}.js`),
+        path.join(__dirname, "src", "handlers", `${handlerName}.js`)
+    ];
+
+    let loaded = false;
+    for (const p of possiblePaths) {
+        if (fs.existsSync(p)) {
+            try {
+                require(p)(client);
+                console.log(`✅ Handler carregado: ${handlerName} (Local: ${p})`);
+                loaded = true;
+                break; 
+            } catch (err) {
+                console.log(`❌ Erro interno no arquivo ${handlerName}: ${err.message}`);
+            }
+        }
+    }
+
+    if (!loaded) {
+        console.log(`⚠️ Aviso: Handler '${handlerName}' não encontrado em nenhum dos caminhos padrão.`);
     }
 });
 
-// --- SISTEMA ANTI-CRASH (FUNDAMENTAL PARA O RENDER) ---
-// Isso impede que o bot caia se houver um erro de API ou de Database
-process.on('unhandledRejection', (reason, promise) => {
-    console.log('⚠️ Erro Detectado (unhandledRejection):', reason);
+// --- SISTEMA ANTI-CRASH ---
+process.on('unhandledRejection', (reason) => {
+    console.log('⚠️ Erro Detectado (Rejeição):', reason);
 });
 
-process.on('uncaughtException', (err, origin) => {
-    console.log('🔥 Erro Crítico (uncaughtException):', err);
+process.on('uncaughtException', (err) => {
+    console.log('🔥 Erro Crítico (Exceção):', err);
 });
 
-// --- LOGIN COM STATUS ---
-client.login(config.token).then(() => {
-    console.log(`
-    --------------------------------------------------
-    🚀 XENZA - SISTEMA INICIALIZADO COM SUCESSO
-    🤖 Bot: ${client.user.tag}
-    📅 Data: ${new Date().toLocaleString('pt-BR')}
-    --------------------------------------------------
-    `);
-}).catch((err) => {
-    console.error("❌ Falha ao iniciar o bot. Verifique o Token no config.json.");
-});
+// --- LOGIN ---
+if (!config.token || config.token === "") {
+    console.error("❌ ERRO: O Token do bot não foi configurado!");
+} else {
+    client.login(config.token).then(() => {
+        console.log(`
+        --------------------------------------------------
+        🚀 XENZA - SISTEMA INICIALIZADO COM SUCESSO
+        🤖 Bot: ${client.user.tag}
+        --------------------------------------------------
+        `);
+    }).catch((err) => {
+        console.error("❌ Falha no login: Token inválido ou bloqueado pela Discord API.");
+    });
+}
