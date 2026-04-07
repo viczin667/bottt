@@ -3,7 +3,7 @@ const path = require('path');
 
 module.exports = {
     run: (client) => {
-        // Localiza a pasta 'Eventos' de forma segura, não importa onde o bot iniciou
+        // Localiza a pasta 'Eventos' de forma absoluta (sobe uma pasta a partir de 'handlers')
         const eventosPath = path.join(__dirname, '..', 'Eventos');
 
         if (!fs.existsSync(eventosPath)) {
@@ -16,16 +16,20 @@ module.exports = {
         categorias.forEach(local => {
             const subPastaPath = path.join(eventosPath, local);
             
-            // Verifica se é uma pasta antes de tentar ler
+            // Verifica se é uma pasta antes de tentar ler (ignora arquivos soltos na raiz de Eventos)
             if (fs.lstatSync(subPastaPath).isDirectory()) {
                 const eventFiles = fs.readdirSync(subPastaPath).filter(arquivo => arquivo.endsWith('.js'));
 
                 for (const file of eventFiles) {
                     try {
-                        // Importação usando caminho absoluto para evitar erro de 'require'
-                        const event = require(path.join(subPastaPath, file));
+                        const filePath = path.join(subPastaPath, file);
+                        
+                        // Limpa o cache do require para evitar conflitos de nomes iguais
+                        delete require.cache[require.resolve(filePath)];
+                        const event = require(filePath);
 
-                        if (event.name) {
+                        // Verifica se o evento tem nome e a função run para não crashar
+                        if (event && event.name && typeof event.run === 'function') {
                             if (event.once) {
                                 client.once(event.name, (...args) => event.run(...args, client));
                             } else {
@@ -33,12 +37,12 @@ module.exports = {
                             }
                         }
                     } catch (error) {
-                        console.error(`❌ Erro ao carregar o evento ${file}:`, error.message);
+                        console.error(`❌ [XENZA] Erro ao carregar o evento '${file}' em '${local}':`, error.message);
                     }
                 }
             }
         });
 
-        console.log(`✅ [XENZA] Todos os eventos de '${eventosPath}' foram processados.`);
+        console.log(`✅ [SISTEMA] Processamento da pasta 'Eventos' finalizado.`);
     }
 };
