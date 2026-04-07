@@ -1,21 +1,20 @@
 const { Client, GatewayIntentBits, Collection, Partials } = require("discord.js");
 const path = require("path");
 const fs = require("fs");
-const colors = require("colors");
 
-// --- 1. CARREGAMENTO DO CONFIG (BLINDADO) ---
-let config;
+// --- 1. GESTÃO DE CONFIGURAÇÃO (TOKEN) ---
+// Se o token não está no config.json, ele DEVE estar no process.env.TOKEN do Render
+let config = {};
 try {
-    // Tenta carregar da raiz ou da pasta src
-    const configPath = fs.existsSync("./config.json") ? "./config.json" : "./src/config.json";
-    config = require(configPath);
+    config = require("./config.json");
 } catch (e) {
-    console.log(colors.yellow("⚠️ config.json não encontrado. Usando Variáveis de Ambiente (Process.env)."));
-    config = { token: process.env.TOKEN }; 
+    console.log("⚠️ [SISTEMA] config.json ausente, lendo variáveis de ambiente.");
 }
 
-// --- 2. IMPORTAÇÃO DAS DATABASES ORIGINAIS ---
-// Ajuste os nomes dos arquivos se houver diferença de maiúsculas/minúsculas
+const TOKEN = process.env.TOKEN || config.token;
+
+// --- 2. DATABASES E DEPENDÊNCIAS ---
+// Certifique-se de que o arquivo se chama exatamente 'DataBaseJson.js' (Linux é case-sensitive)
 const { produtos, configuracao, Emojis } = require("./DataBaseJson"); 
 const { QuickDB } = require("quick.db");
 const db = new QuickDB();
@@ -37,75 +36,71 @@ const client = new Client({
     ],
 });
 
-// Exportação imediata para evitar erro de 'Module Not Found' em outros arquivos
+// --- 3. EXPORTAÇÃO CRUCIAL ---
+// Exportamos o client ANTES de carregar os handlers para evitar Circular Dependency
 module.exports = client;
 
 client.commands = new Collection();
 client.aliases = new Collection();
 client.slashCommands = new Collection();
 
-// --- 3. CARREGAMENTO DOS HANDLERS (SISTEMA RASTREADOR) ---
-const handlersToLoad = ["commands", "events", "slash"];
-
-handlersToLoad.forEach(handlerName => {
-    // Tenta localizar a pasta 'handlers' na raiz ou dentro de 'src'
-    const possiblePaths = [
+// --- 4. CARREGAMENTO DOS HANDLERS (LOGICA BLINDADA) ---
+["commands", "events", "slash"].forEach(handlerName => {
+    const searchPaths = [
         path.join(__dirname, "handlers", `${handlerName}.js`),
         path.join(__dirname, "src", "handlers", `${handlerName}.js`)
     ];
 
     let loaded = false;
-    for (const p of possiblePaths) {
+    for (const p of searchPaths) {
         if (fs.existsSync(p)) {
             try {
                 const handler = require(p);
-                // Executa o handler passando o client
+                // Executa o handler (seja exportado como função direta ou objeto com .run)
                 if (typeof handler === 'function') {
                     handler(client);
                 } else if (handler.run && typeof handler.run === 'function') {
                     handler.run(client);
                 }
                 
-                console.log(colors.green(`✅ [HANDLER] ${handlerName.toUpperCase()} carregado com sucesso.`));
+                console.log(`✅ [HANDLER] ${handlerName} carregado de: ${p}`);
                 loaded = true;
                 break; 
             } catch (err) {
-                console.log(colors.red(`❌ [ERRO] Falha no arquivo ${handlerName}: ${err.message}`));
+                console.log(`❌ [ERRO] Falha interna no handler '${handlerName}': ${err.message}`);
+                console.error(err.stack);
             }
         }
     }
 
     if (!loaded) {
-        console.log(colors.red(`⚠️ [AVISO] O handler '${handlerName}' não foi encontrado.`));
+        console.log(`⚠️ [AVISO] O handler '${handlerName}' não foi encontrado.`);
     }
 });
 
-// --- 4. PROTEÇÃO ANTI-CRASH (BLINDAGEM CONTRA QUEDAS) ---
+// --- 5. SISTEMA ANTI-CRASH (ESSENCIAL PARA O RENDER) ---
 process.on('unhandledRejection', (reason, promise) => {
-    console.log(colors.red('⚠️ Erro Rejeitado (unhandledRejection):'), reason);
+    console.log('⚠️ [ANTI-CRASH] Rejeição não tratada:', reason);
 });
 
 process.on('uncaughtException', (err, origin) => {
-    console.log(colors.red('🔥 Erro Crítico (uncaughtException):'), err);
+    console.log('🔥 [ANTI-CRASH] Exceção fatal:', err);
 });
 
-process.on('uncaughtExceptionMonitor', (err, origin) => {
-    console.log(colors.red('🛡️ Monitor de Exceção:'), err);
-});
-
-// --- 5. LOGIN E STATUS ---
-if (!config.token || config.token === "") {
-    console.error(colors.bgRed("❌ ERRO FATAL: TOKEN NÃO CONFIGURADO! Verifique o config.json ou o Render."));
+// --- 6. INICIALIZAÇÃO ---
+if (!TOKEN) {
+    console.error("❌ [ERRO] Token não localizado! Configure no Render (Environment Variables).");
 } else {
-    client.login(config.token).then(() => {
-        console.log(colors.cyan(`
-        ╔══════════════════════════════════════════════════╗
-        ║        XENZA - SISTEMA OPERACIONAL          ║
-        ║        STATUS: ONLINE E PROTEGIDO                ║
-        ║        BOT: ${client.user.tag.padEnd(28)} ║
-        ╚══════════════════════════════════════════════════╝
-        `));
+    client.login(TOKEN).then(() => {
+        console.log(`
+        --------------------------------------------------
+        🚀 XENZA - SISTEMA INICIALIZADO
+        🤖 Bot: ${client.user.tag}
+        🛠️ Modo: Produção (Render/Linux)
+        --------------------------------------------------
+        `);
     }).catch((err) => {
-        console.error(colors.red("❌ Falha no login: Token inválido ou Intent de MessageContent desativada no Portal Developer."));
+        console.error("❌ [ERRO] Falha no login da API:");
+        console.error(err.message);
     });
 }
