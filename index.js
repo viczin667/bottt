@@ -1,20 +1,36 @@
 const { Client, GatewayIntentBits, Collection, Partials } = require("discord.js");
 const path = require("path");
 const fs = require("fs");
+const express = require("express"); // Adicionado para manter o bot vivo no Render
 
-// --- 1. GESTÃO DE CONFIGURAÇÃO (TOKEN) ---
-// Se o token não está no config.json, ele DEVE estar no process.env.TOKEN do Render
+// --- 1. MINI SERVIDOR PARA O RENDER (PORT BINDING) ---
+// Isso impede o erro de "Port scan timeout" e "Timed Out"
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+app.get("/", (req, res) => {
+    res.send("🚀 Xenza V270 está online e operando.");
+});
+
+app.listen(PORT, () => {
+    console.log(`📡 [REDE] Servidor de monitoramento aberto na porta ${PORT}`);
+});
+
+// --- 2. GESTÃO DE CONFIGURAÇÃO (TOKEN) ---
 let config = {};
 try {
-    config = require("./config.json");
+    // Busca o config na raiz ou na src
+    const configPath = fs.existsSync("./config.json") ? "./config.json" : "./src/config.json";
+    config = require(configPath);
 } catch (e) {
-    console.log("⚠️ [SISTEMA] config.json ausente, lendo variáveis de ambiente.");
+    console.log("⚠️ [SISTEMA] config.json não encontrado, usando Environment Variables.");
 }
 
+// Prioridade para o Render (Environment Variables), depois config.json
 const TOKEN = process.env.TOKEN || config.token;
 
-// --- 2. DATABASES E DEPENDÊNCIAS ---
-// Certifique-se de que o arquivo se chama exatamente 'DataBaseJson.js' (Linux é case-sensitive)
+// --- 3. DATABASES E DEPENDÊNCIAS ---
+// Certifique-se de que os nomes dos arquivos estão idênticos (Linux diferencia maiúsculas)
 const { produtos, configuracao, Emojis } = require("./DataBaseJson"); 
 const { QuickDB } = require("quick.db");
 const db = new QuickDB();
@@ -36,15 +52,15 @@ const client = new Client({
     ],
 });
 
-// --- 3. EXPORTAÇÃO CRUCIAL ---
-// Exportamos o client ANTES de carregar os handlers para evitar Circular Dependency
+// --- 4. EXPORTAÇÃO CRUCIAL ---
+// Exportamos ANTES dos handlers para que eles possam importar o client se necessário
 module.exports = client;
 
 client.commands = new Collection();
 client.aliases = new Collection();
 client.slashCommands = new Collection();
 
-// --- 4. CARREGAMENTO DOS HANDLERS (LOGICA BLINDADA) ---
+// --- 5. CARREGAMENTO DOS HANDLERS (LOGICA BLINDADA) ---
 ["commands", "events", "slash"].forEach(handlerName => {
     const searchPaths = [
         path.join(__dirname, "handlers", `${handlerName}.js`),
@@ -56,14 +72,14 @@ client.slashCommands = new Collection();
         if (fs.existsSync(p)) {
             try {
                 const handler = require(p);
-                // Executa o handler (seja exportado como função direta ou objeto com .run)
+                // Executa o handler conforme a exportação do arquivo
                 if (typeof handler === 'function') {
                     handler(client);
                 } else if (handler.run && typeof handler.run === 'function') {
                     handler.run(client);
                 }
                 
-                console.log(`✅ [HANDLER] ${handlerName} carregado de: ${p}`);
+                console.log(`✅ [HANDLER] ${handlerName} carregado com sucesso.`);
                 loaded = true;
                 break; 
             } catch (err) {
@@ -78,29 +94,29 @@ client.slashCommands = new Collection();
     }
 });
 
-// --- 5. SISTEMA ANTI-CRASH (ESSENCIAL PARA O RENDER) ---
+// --- 6. SISTEMA ANTI-CRASH (ESSENCIAL PARA O RENDER) ---
 process.on('unhandledRejection', (reason, promise) => {
-    console.log('⚠️ [ANTI-CRASH] Rejeição não tratada:', reason);
+    console.log('⚠️ [ANTI-CRASH] Rejeição detectada:', reason);
 });
 
 process.on('uncaughtException', (err, origin) => {
-    console.log('🔥 [ANTI-CRASH] Exceção fatal:', err);
+    console.log('🔥 [ANTI-CRASH] Exceção fatal detectada:', err);
 });
 
-// --- 6. INICIALIZAÇÃO ---
-if (!TOKEN) {
-    console.error("❌ [ERRO] Token não localizado! Configure no Render (Environment Variables).");
+// --- 7. INICIALIZAÇÃO ---
+if (!TOKEN || TOKEN === "") {
+    console.error("❌ [ERRO] Token não localizado! Configure 'TOKEN' nas Environment Variables do Render.");
 } else {
     client.login(TOKEN).then(() => {
         console.log(`
         --------------------------------------------------
-        🚀 XENZA - SISTEMA INICIALIZADO
+        🚀 XENZA V270 - SISTEMA INICIALIZADO
         🤖 Bot: ${client.user.tag}
-        🛠️ Modo: Produção (Render/Linux)
+        🛠️ Ambiente: Render (Linux)
         --------------------------------------------------
         `);
     }).catch((err) => {
-        console.error("❌ [ERRO] Falha no login da API:");
+        console.error("❌ [ERRO] Falha no login da API do Discord:");
         console.error(err.message);
     });
 }
