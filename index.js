@@ -3,33 +3,38 @@ const path = require("path");
 const fs = require("fs");
 const express = require("express");
 
-// --- 1. MONITORAMENTO (KEEP ALIVE) ---
+// --- 1. MINI SERVIDOR PARA O RENDER (MANTIDO) ---
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.get("/", (req, res) => {
-    res.status(200).json({ 
-        status: "online", 
-        version: "V270", 
-        uptime: process.uptime().toFixed(2) + "s" 
-    });
+    res.send("🚀 Xenza V270 está online e operando.");
 });
 
 app.listen(PORT, () => {
-    console.log(`📡 [REDE] Porta ${PORT} vinculada com sucesso.`);
+    console.log(`📡 [REDE] Servidor de monitoramento aberto na porta ${PORT}`);
 });
 
-// --- 2. CONFIGURAÇÃO (FLEXÍVEL) ---
-// Função para carregar token sem travar o sistema
-const getAuth = () => {
-    if (process.env.TOKEN) return process.env.TOKEN;
-    const configPath = ["./config.json", "./src/config.json"].find(p => fs.existsSync(p));
-    return configPath ? require(configPath).token : null;
-};
+// --- 2. GESTÃO DE CONFIGURAÇÃO (BLINDADA) ---
+let config = {};
+try {
+    // Mantida a lógica de busca original (raiz ou src)
+    const configPath = fs.existsSync("./config.json") ? "./config.json" : "./src/config.json";
+    if (fs.existsSync(configPath)) {
+        config = require(configPath);
+    }
+} catch (e) {
+    console.log("⚠️ [SISTEMA] Erro ao ler config.json, usando Environment Variables.");
+}
 
-const TOKEN = getAuth();
+const TOKEN = process.env.TOKEN || config.token;
 
-// --- 3. CLIENT SETUP ---
+// --- 3. DATABASES E DEPENDÊNCIAS (TODAS MANTIDAS) ---
+// Importando exatamente como no seu código original
+const { produtos, configuracao, Emojis } = require("./DataBaseJson"); 
+const { QuickDB } = require("quick.db");
+const db = new QuickDB();
+
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
@@ -47,73 +52,70 @@ const client = new Client({
     ],
 });
 
-// Collections para comandos
+// --- 4. EXPORTAÇÃO (MANTIDA ANTES DOS HANDLERS) ---
+module.exports = client;
+
 client.commands = new Collection();
 client.aliases = new Collection();
 client.slashCommands = new Collection();
 
-// Exportação do client para ser usado nos handlers
-module.exports = client;
+// --- 5. CARREGAMENTO DOS HANDLERS (OTIMIZADO MAS INTEGRAL) ---
+["commands", "events", "slash"].forEach(handlerName => {
+    const searchPaths = [
+        path.join(__dirname, "handlers", `${handlerName}.js`),
+        path.join(__dirname, "src", "handlers", `${handlerName}.js`)
+    ];
 
-// --- 4. HANDLERS DINÂMICOS ---
-const loadHandlers = () => {
-    const categories = ["commands", "events", "slash"];
-    
-    categories.forEach(handlerName => {
-        // Busca inteligente de caminhos (Prioriza pasta src se existir)
-        const possiblePaths = [
-            path.join(__dirname, "src", "handlers", `${handlerName}.js`),
-            path.join(__dirname, "handlers", `${handlerName}.js`)
-        ];
-
-        const activePath = possiblePaths.find(p => fs.existsSync(p));
-
-        if (activePath) {
+    let loaded = false;
+    for (const p of searchPaths) {
+        if (fs.existsSync(p)) {
             try {
-                const handler = require(activePath);
+                const handler = require(p);
+                // Executa conforme a sua lógica original de exportação
                 if (typeof handler === 'function') {
                     handler(client);
-                } else if (handler.run) {
+                } else if (handler.run && typeof handler.run === 'function') {
                     handler.run(client);
                 }
-                console.log(`✅ [${handlerName.toUpperCase()}] Carregado: ${path.basename(activePath)}`);
+                
+                console.log(`✅ [HANDLER] ${handlerName} carregado de: ${p}`);
+                loaded = true;
+                break; 
             } catch (err) {
-                console.error(`❌ [ERRO] Falha no handler '${handlerName}':\n`, err);
+                console.log(`❌ [ERRO] Falha interna no handler '${handlerName}': ${err.message}`);
+                console.error(err.stack);
             }
-        } else {
-            console.warn(`⚠️ [AVISO] Handler '${handlerName}' não localizado.`);
         }
-    });
-};
+    }
 
-loadHandlers();
+    if (!loaded) {
+        console.log(`⚠️ [AVISO] O handler '${handlerName}' não foi encontrado.`);
+    }
+});
 
-// --- 5. SISTEMA ANTI-CRASH (BLINDAGEM TOTAL) ---
+// --- 6. SISTEMA ANTI-CRASH (ESSENCIAL) ---
 process.on('unhandledRejection', (reason, promise) => {
-    console.error('⚠️ [ANTI-CRASH] Rejeição não tratada em:', promise, 'razão:', reason);
+    console.log('⚠️ [ANTI-CRASH] Rejeição detectada:', reason);
 });
 
 process.on('uncaughtException', (err, origin) => {
-    console.error('🔥 [ANTI-CRASH] Exceção fatal em:', origin, '\nErro:', err);
+    console.log('🔥 [ANTI-CRASH] Exceção fatal detectada:', err);
 });
 
-// --- 6. INICIALIZAÇÃO ---
+// --- 7. INICIALIZAÇÃO ---
 if (!TOKEN) {
-    console.error("❌ [ERRO FATAL] Token não configurado! Verifique o Render (Env Vars) ou o config.json.");
-    process.exit(1); // Fecha o processo com erro
+    console.error("❌ [ERRO] Token não localizado! Configure no Render ou no config.json.");
 } else {
-    client.login(TOKEN).catch((err) => {
-        console.error("❌ [ERRO] Login na API do Discord falhou:");
+    client.login(TOKEN).then(() => {
+        console.log(`
+        --------------------------------------------------
+        🚀 XENZA V270 - SISTEMA INICIALIZADO
+        🤖 Bot: ${client.user.tag}
+        🛠️ Ambiente: ${process.env.RENDER ? 'Render (Linux)' : 'Local (Xeon)'}
+        --------------------------------------------------
+        `);
+    }).catch((err) => {
+        console.error("❌ [ERRO] Falha no login:");
         console.error(err.message);
     });
 }
-
-client.once('ready', () => {
-    console.log(`
-    ==================================================
-    🚀 XENZA V270 - SISTEMA ATIVO
-    🤖 Logado como: ${client.user.tag}
-    💻 Host: ${process.env.RENDER ? 'Render Cloud' : 'Local/Xeon Server'}
-    ==================================================
-    `);
-});
